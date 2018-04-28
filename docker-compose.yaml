@@ -1,0 +1,27 @@
+version: "2"
+
+services:
+  envoy-omnipay:
+    container_name: envoy-omnipay
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - "${PWD}/envoy.v2.yaml:/etc/envoy.yaml"
+    restart: always
+    environment:
+      - TEST_ENV=test
+    ports:
+      - "9902:9902"
+      - "13011:11011"
+      - "13021:11021"
+      - "18080:18080"
+    hostname: envoy-omnipay 
+    networks:
+      - envoy
+
+networks:
+  envoy:
+    driver: bridge
+    ipam:
+      driver: default

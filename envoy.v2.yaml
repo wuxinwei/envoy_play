@@ -1,0 +1,132 @@
+static_resources:
+  listeners:
+  - name: local_listener
+    address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 18080
+    filter_chains:
+    - filters:
+      - name: envoy.http_connection_manager
+        config:
+          stat_prefix: local_listener
+          codec_type: AUTO
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local-service
+              domains:
+              - "*"
+              routes:
+              - match:
+                  prefix: "/"
+                route:
+                  cluster:
+                    local-service
+          http_filters:
+          - name: envoy.router
+            config: {}
+
+  - name: grpc-http1-bridge-listener
+    address:
+      socket_address: 
+        address: 0.0.0.0
+        port_value: 11021
+    filter_chains:
+    - filters:
+      - name: envoy.http_connection_manager 
+        config:
+          codec_type: AUTO
+          stat_prefix: grpc-http1-bridge-grpc
+          route_config:
+            name: grpc-http1-bridge-route
+            virtual_hosts:
+            - name: grpc-http1-bridge-api
+              domains: 
+              - "*"
+              routes:
+              - match:
+                  prefix: "/" 
+                  headers: 
+                  - name: content-type
+                    value: application/grpc
+                route:
+                  cluster: grpc-http1-bridge
+                  timeout: 0.250s
+                  retry_policy:
+                    retry_on: "resource-exhausted"
+                    num_retries: 3
+          http_filters:
+          - name: envoy.grpc_http1_bridge
+            config: {}
+
+  - name: grpc-http1-bridge-listener
+    address:
+      socket_address:
+         address: 0.0.0.0
+         port_value: 11011
+    filter_chains:
+    - filters:
+      - name: envoy.http_connection_manager
+        config:
+          codec_type: AUTO
+          stat_prefix: grpc-http1-bridge-grpc
+          route_config:
+            name: grpc-http1-bridge-route
+            virtual_hosts:
+            - name: grpc-http1-bridge-api
+              domains:
+              - "*"
+              routes:
+              - match:
+                  prefix: "/" 
+                  headers: 
+                  - name: content-type
+                    value: application/grpc
+                route:
+                  cluster: grpc-http1-bridge
+                  timeout: 0.250s
+                  retry_policy:
+                    retry_on: "resource-exhausted"
+                    num_retries: 3
+          http_filters:
+          - name: envoy.grpc_http1_bridge
+            config: {}
+
+  clusters:
+  - name: grpc-service
+    connect_timeout: 0.250s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    hosts:
+    - socket_address:
+        address: 10.0.0.42
+        port_value: 11010
+
+  - name: grpc-service
+    connect_timeout: 0.250s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    hosts:
+    - socket_address:
+        address: 10.0.0.43
+        port_value: 11020
+
+  - name: local-service
+    connect_timeout: 0.250s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    hosts:
+    - socket_address:
+        address: 10.0.0.43
+        port_value: 8000
+
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9902
+
+cluster_manager:
+  local_cluster_name: envoy-play
